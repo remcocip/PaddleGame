@@ -11,8 +11,12 @@ if the player misses the ball, a point goes to the other.
 The bottom player needs to use the Left and Right arrow key.
 The top player needs to use the mouse.
 """
-# True if run in Code in Place
-RUN_IN_CODE_IN_PLACE = False
+import os
+if os.getcwd() == '/home/pyodide':
+    # True if run in Code in Place
+    RUN_IN_CODE_IN_PLACE = True
+else:
+    RUN_IN_CODE_IN_PLACE = False
 
 from graphics import Canvas
 import time
