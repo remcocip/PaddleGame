@@ -34,7 +34,6 @@ Todo: changeable selection at start_screen
 After the user clicked an item and another item is clicked, the latter is kept
 
 Todo: confetti end_screen
-If not RUN_ON_CODE_IN_PLACE don't iterate over get_end_screen_colors()
 give Code in Place user option to show confetti too
 """
 
@@ -61,15 +60,16 @@ PADDLE_Y2 = 15                      # top paddle
 PADDLE_WIDTH = 80
 PADDLE_HEIGHT = 15
 BALL_RADIUS = 10
-offset = 8
-box_size = 30
+OFFSET = 8
+BOX_SIZE = 30
 
 # CHANGEABLE CONSTANTS
 if RUN_IN_CODE_IN_PLACE:
-    SPEED = 0        # closer to 0 is faster
+    SPEED = 0               # closer to 0 is faster
 else:
     SPEED = 0.01
 ROUNDS = ['9', '3', '5']    # keep odd and single digit
+CONFETTI = 200               # amount of confetti
 
 def main():
     canvas = Canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
@@ -104,10 +104,10 @@ def start_screen(canvas):
                 if key in ['Paddle Game', 'Rounds']:
                     continue
 
-                x1 = items[key][0]-offset
-                y1 = items[key][1]-offset
-                x2 = x1 + box_size
-                y2 = y1 + box_size
+                x1 = items[key][0]-OFFSET
+                y1 = items[key][1]-OFFSET
+                x2 = x1 + BOX_SIZE
+                y2 = y1 + BOX_SIZE
 
                 if x1 <= x <= x2 and y1 <= y <= y2:
                     if key in [' ', 'Exit']:
@@ -210,29 +210,12 @@ def end_screen(canvas, score):
         haiku = ["In a pixel world", f"{winner.title()} claims the crown", "Victory's sweet sound."]
 
     # lol
-    colors = get_end_screen_colors()
-    for i in range(len(colors)):
-        screen = canvas.create_rectangle(0,0,CANVAS_WIDTH,CANVAS_HEIGHT,colors[i])
-
-        score_dict = {
-            'player1':  [str(score[0]), 80],
-            '-':        [' - ',         CANVAS_WIDTH/2-35],
-            'player2':  [str(score[1]), 280]
-        }
-        for key in score_dict:
-            canvas.create_text(
-                score_dict[key][1],
-                CANVAS_HEIGHT/2-40,
-                text = score_dict[key][0],
-                font = 'Arial',
-                font_size = 60,
-                color = 'white'
-            )
-        time.sleep(0.1)
-        canvas.delete(screen)
-    if not RUN_IN_CODE_IN_PLACE:
+    if RUN_IN_CODE_IN_PLACE:
+        end_screen_colors(canvas, score)
+    else:
+        end_screen_confetti(canvas, score)
         canvas.update()
-
+    canvas.wait_for_click()
     show_image(canvas, 'soft')
     haiku_color = get_random_color()
     for i in range(len(haiku)):
@@ -276,6 +259,99 @@ def exit_screen(canvas):
     canvas.clear()
 
 
+def end_screen_confetti(canvas, score):
+    show_image(canvas, 'soft')
+    for i in range(CONFETTI):
+        show_score(canvas, score)
+        confetti_color = get_confetti_color()
+        # define random size
+        size = random.randint(1, 20)
+        # define random location on canvas
+        x_coordinate = random.randint(0, CANVAS_WIDTH - size)
+        y_coordinate = random.randint(0, CANVAS_HEIGHT - size)
+        function = random.choice(["circle", "rectangle", "line"])
+        if function == "circle":
+            confetti_circle(canvas, x_coordinate, y_coordinate, size, confetti_color)
+        elif function == "rectangle":
+            confetti_square(canvas, x_coordinate, y_coordinate, size, confetti_color)
+        elif function == "line":
+            length = random.randint(50, 250)
+            confetti_line(canvas, x_coordinate, y_coordinate, confetti_color, length, size)
+        canvas.update()
+        time.sleep(0.1)
+
+
+def confetti_line(canvas, x1, y1, color, length=100, width=1):
+    """
+    This function draws a line.
+    """
+    x2 = x1 + width
+    y2 = y1 + length
+    canvas.create_line(x1, y1, x2, y2, fill=color)
+
+
+def confetti_square(canvas, x1, y1, size, color):
+    """
+    This function draws a square.
+    """
+    x2 = x1 + size
+    y2 = y1 + size
+    canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+
+
+def confetti_circle(canvas, x1, y1, size, color):
+    """
+    This function draws a circle.
+    """
+    x2 = x1 + size
+    y2 = y1 + size
+    canvas.create_oval(x1, y1, x2, y2, color)
+
+
+def get_confetti_color():
+    """
+    Function that returns a random color.
+    """
+    colors = [
+        'orange',
+        'coral',
+        'tomato',
+        'red',
+        'hot pink',
+        'deep pink',
+        'maroon',
+        'medium purple',
+        'purple'
+        ]
+    return random.choice(colors)
+
+
+def end_screen_colors(canvas, score):
+    colors = get_end_screen_colors()
+    for i in range(len(colors)):
+        screen = canvas.create_rectangle(0,0,CANVAS_WIDTH,CANVAS_HEIGHT,colors[i])
+        show_score(canvas, score)
+        time.sleep(0.1)
+        canvas.delete(screen)
+
+
+def show_score(canvas, score):
+    score_dict = {
+        'player1': [str(score[0]), 80],
+        '-': [' - ', CANVAS_WIDTH / 2 - 35],
+        'player2': [str(score[1]), 280]
+    }
+    for key in score_dict:
+        canvas.create_text(
+            score_dict[key][1],
+            CANVAS_HEIGHT / 2 - 40,
+            text=score_dict[key][0],
+            font='Arial',
+            font_size=60,
+            color='white'
+        )
+
+
 def build_start_screen(canvas):
     show_image(canvas)
     color = get_random_color()
@@ -307,10 +383,10 @@ def build_start_screen(canvas):
     for key in items:
         if key in ROUNDS:
             canvas.create_rectangle(                # 0 - 4
-                items[key][0]-offset,
-                items[key][1]-offset,
-                items[key][0]-offset+box_size,
-                items[key][1]-offset+box_size,
+                items[key][0]-OFFSET,
+                items[key][1]-OFFSET,
+                items[key][0]-OFFSET+BOX_SIZE,
+                items[key][1]-OFFSET+BOX_SIZE,
                 color = items[key][4]
             )
         canvas.create_text(                     # 5 - 9
@@ -325,7 +401,7 @@ def build_start_screen(canvas):
     info = canvas.create_text(
         15,
         CANVAS_HEIGHT-50,
-        "Player 1 (bottom) uses arrow keys, player 2 (top) uses the mouse.",
+        "Player 1: arrow keys - Player 2: mouse.",
         color = color
         )
     return items, info, color
@@ -504,8 +580,7 @@ def get_end_screen_colors():
         'dark orange', 'coral', 'light coral', 'tomato',
         'orange red', 'red', 'hot pink', 'deep pink', 'pink',
         'light pink', 'pale violet red', 'maroon',
-        'medium violet red', 'violet red', 'medium orchid',
-        'dark orchid', 'dark violet', 'blue violet', 'purple',
+        'violet red', 'dark orchid', 'dark violet', 'blue violet', 'purple',
         'medium purple',
         ]
     return colors
