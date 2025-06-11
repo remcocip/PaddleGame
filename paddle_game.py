@@ -155,8 +155,13 @@ def play(canvas, rounds_to_play):
         change_y = random.choice([-1, 1])
         while True:
             canvas.move(ball, change_x, change_y)
-            move_paddle_keys(canvas, paddle_1)
             move_paddle_mouse(canvas, paddle_2)
+            if RUN_IN_CODE_IN_PLACE:
+                move_paddle_keys(canvas, paddle_1)
+            else:
+                canvas.bind("<Left>", move_paddle_left(canvas, paddle_1))
+                canvas.bind("<Right>", move_paddle_right(canvas, paddle_1))
+
             change_y = paddle_touched(canvas, paddle_1, paddle_2, ball, change_y)
 
             # ball bounces at the walls
@@ -378,27 +383,27 @@ def move_paddle_keys(canvas, paddle_1):
     # get the x position of the paddle
     paddle_x = canvas.get_left_x(paddle_1)
     # determine the movement
-    if RUN_IN_CODE_IN_PLACE:
-        key = canvas.get_last_key_press()
-        if key == 'ArrowLeft' and paddle_x > 0:
-            paddle_x -= 10
-        elif key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
-            paddle_x += 10
-        # and move the paddle to the new location
-        canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
-    else:
-        canvas.bind("<Left>", move_paddle_left(canvas, paddle_1, paddle_x))
-        canvas.bind("<Right>", move_paddle_right(canvas, paddle_1, paddle_x))
+    key = canvas.get_last_key_press()
+    if key == 'ArrowLeft' and paddle_x > 0:
+        paddle_x -= 10
+    elif key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
+        paddle_x += 10
+    # and move the paddle to the new location
+    canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
 
 
-def move_paddle_left(canvas, paddle_1, paddle_x):
+def move_paddle_left(canvas, paddle_1):
+    paddle_x = canvas.get_left_x(paddle_1)
     x = paddle_x - 10
+    print("Left", paddle_x, x)
     if paddle_x > 0:
         canvas.moveto(paddle_1, x, PADDLE_Y1)
 
 
-def move_paddle_right(canvas, paddle_1, paddle_x):
+def move_paddle_right(canvas, paddle_1):
+    paddle_x = canvas.get_left_x(paddle_1)
     x = paddle_x + 10
+    print("Right", paddle_x, x)
     if paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
         canvas.moveto(paddle_1, x, PADDLE_Y1)
 
