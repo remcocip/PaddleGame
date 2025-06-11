@@ -6,7 +6,7 @@ Version date: 11 june 2025
 This is my 'final project' for Code in Place 2025.
 
 In this game two players will pass the ball to each other,
-if the player misses the ball, a point goes to the other.
+if a player misses the ball, a point goes to the other.
 
 The bottom player needs to use the Left and Right arrow key.
 The top player needs to use the mouse.
