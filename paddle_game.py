@@ -1,7 +1,7 @@
 """
 File: paddle_game.py
 Author: Remco (remco.cip@gmail.com)
-Version date: 10 june 2025
+Version date: 11 june 2025
 
 This is my 'final project' for Code in Place 2025.
 
