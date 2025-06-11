@@ -7,9 +7,9 @@ Version date: 11 June 2025
 * During this course I had so much fun and learned a lot about Python programming.
 
 ## **INSTALLATION:** 
-1 python3 is installed
-2 graphics.py library, copied from Stanford and changed
-3 pillow package: "python -m pip install pillow"
+# python3 is installed
+# graphics.py library, copied from Stanford and changed
+# pillow package: "python -m pip install pillow"
 
 ### **How do I play?**
 * Start the game by running "python paddle_game.py"
