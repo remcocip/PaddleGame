@@ -10,7 +10,33 @@ if a player misses the ball, a point goes to the other.
 
 The bottom player needs to use the Left and Right arrow key.
 The top player needs to use the mouse.
+
+What work is still to be done to improve the game:
+Todo: fix ArrowKeys when playing offline
+canvas.bind("<Left>", move_paddle_left)
+canvas.bind("<Right>", move_paddle_right)
+
+Todo: bonus items
+With bonus items a player can earn extra points. Bonus items are
+given at launch and provided after point and after amount of successful paddle touches
+
+Todo: show score
+Show the score in the play screen
+Show the score at the end_screen (with the haiku)
+
+Todo: start_screen options
+Color of the paddle
+Color of the ball
+Confetti
+
+Todo: changeable selection at start_screen
+After the user clicked an item and another item is clicked, the latter is kept
+
+Todo: confetti end_screen
+If not RUN_ON_CODE_IN_PLACE don't iterate over get_end_screen_colors()
+give Code in Place user option to show confetti too
 """
+
 import os
 if os.getcwd() == '/home/pyodide':
     # True if run in Code in Place
@@ -38,7 +64,10 @@ offset = 8
 box_size = 30
 
 # CHANGEABLE CONSTANTS
-SPEED = 0.0000000001        # closer to 0 is faster
+if RUN_IN_CODE_IN_PLACE:
+    SPEED = 0        # closer to 0 is faster
+else:
+    SPEED = 0.01
 ROUNDS = ['9', '3', '5']    # keep odd and single digit
 
 def main():
@@ -79,7 +108,7 @@ def start_screen(canvas):
                 x2 = x1 + box_size
                 y2 = y1 + box_size
 
-                if x >= x1 and x <= x2 and y >= y1 and y <= y2:
+                if x1 <= x <= x2 and y1 <= y <= y2:
                     if key in [' ', 'Exit']:
                         return key
                     canvas.delete(key)
@@ -125,8 +154,8 @@ def play(canvas, rounds_to_play):
         change_y = random.choice([-1, 1])
         while True:
             canvas.move(ball, change_x, change_y)
-            move_paddle_1(canvas, paddle_1)
-            move_paddle_2(canvas, paddle_2)
+            move_paddle_keys(canvas, paddle_1)
+            move_paddle_mouse(canvas, paddle_2)
             change_y = paddle_touched(canvas, paddle_1, paddle_2, ball, change_y)
 
             # ball bounces at the walls
@@ -134,7 +163,7 @@ def play(canvas, rounds_to_play):
             if x < 0 or x > CANVAS_WIDTH - BALL_RADIUS * 2:
                 change_x = -change_x
 
-            # if ball not catched
+            # if ball not caught
             y_top = canvas.get_top_y(ball)
             y_bottom = y_top + BALL_RADIUS*2 - 1
             y_top += 1
@@ -161,7 +190,7 @@ def play(canvas, rounds_to_play):
 
 def end_screen(canvas, score):
     """
-    Function that creates the endscreen
+    Function that creates the end_screen
     """
     # determine the winner:
     winner = 'player 1' if score[0] > score[1] else 'player 2'
@@ -175,7 +204,7 @@ def end_screen(canvas, score):
         haiku = ["In a pixel world", f"{winner.title()} claims the crown", "Victory's sweet sound."]
 
     # lol
-    colors = get_endscreen_colors()
+    colors = get_end_screen_colors()
     for i in range(len(colors)):
         screen = canvas.create_rectangle(0,0,CANVAS_WIDTH,CANVAS_HEIGHT,colors[i])
 
@@ -217,7 +246,7 @@ def end_screen(canvas, score):
 
 def exit_screen(canvas):
     """
-    Function to show exitscreen, only used when
+    Function to show exit_screen, only used when
     RUN_IN_CODE_IN_PLACE = True
     """
     show_image(canvas, 'soft')
@@ -300,11 +329,10 @@ def show_image(canvas, pic_type='hard'):
     """
     Function to show the background image
     """
-    filepath = os.listdir(os.getcwd())
     if pic_type == 'soft':
-        image = canvas.create_image(0, 0, 'paddle_soft.jpg')
+        canvas.create_image(0, 0, 'paddle_soft.jpg')
     else:
-        image = canvas.create_image(0, 0, 'paddle.jpg')
+        canvas.create_image(0, 0, 'paddle.jpg')
 
 
 def click_to_continue(canvas, info, color=''):
@@ -315,7 +343,8 @@ def click_to_continue(canvas, info, color=''):
     if RUN_IN_CODE_IN_PLACE:
         canvas.change_text(info, "    Click to continue...")
     else:
-        info = canvas.create_text(
+        canvas.delete(info)
+        canvas.create_text(
             15,
             CANVAS_HEIGHT - 50,
             "    Click to continue...",
@@ -327,7 +356,7 @@ def click_to_continue(canvas, info, color=''):
 def paddle_touched(canvas, paddle_1, paddle_2, ball, change_y):
     """
     Function to handle the collision with paddle.
-    Returns a swapped change_y if the paddle is toched.
+    Returns a swapped change_y if the paddle is touched.
     """
     x1 = canvas.get_left_x(ball)
     y1 = canvas.get_top_y(ball)
@@ -341,7 +370,7 @@ def paddle_touched(canvas, paddle_1, paddle_2, ball, change_y):
     return change_y
 
 
-def move_paddle_1(canvas, paddle_1):
+def move_paddle_keys(canvas, paddle_1):
     """
     Function to move the paddle with the keys.
     """
@@ -350,18 +379,30 @@ def move_paddle_1(canvas, paddle_1):
     # determine the movement
     if RUN_IN_CODE_IN_PLACE:
         key = canvas.get_last_key_press()
+        if key == 'ArrowLeft' and paddle_x > 0:
+            paddle_x -= 10
+        elif key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
+            paddle_x += 10
+        # and move the paddle to the new location
+        canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
     else:
-        key = 'ArrowLeft'
-    if key == 'ArrowLeft' and paddle_x > 0:
-        paddle_x -= 10
-    elif key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
-        paddle_x += 10
-
-    # and move the paddle to the new location
-    canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
+        canvas.bind("<Left>", move_paddle_left(canvas, paddle_1, paddle_x))
+        canvas.bind("<Right>", move_paddle_right(canvas, paddle_1, paddle_x))
 
 
-def move_paddle_2(canvas, paddle_2):
+def move_paddle_left(canvas, paddle_1, paddle_x):
+    x = paddle_x - 10
+    if paddle_x > 0:
+        canvas.moveto(paddle_1, x, PADDLE_Y1)
+
+
+def move_paddle_right(canvas, paddle_1, paddle_x):
+    x = paddle_x + 10
+    if paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
+        canvas.moveto(paddle_1, x, PADDLE_Y1)
+
+
+def move_paddle_mouse(canvas, paddle_2):
     """
     Function to move the paddle with the mouse
     relative to the middle of the paddle.
@@ -424,7 +465,7 @@ def get_random_color():
     return random.choice(colors)
 
 
-def get_endscreen_colors():
+def get_end_screen_colors():
     """
     Function that returns a list full of colors
     """
