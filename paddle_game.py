@@ -2,7 +2,7 @@
 File: paddle_game.py
 Author: Remco (remco.cip@gmail.com)
 Repository: https://github.com/remcocip/PaddleGame
-Version date: 11 june 2025
+Version date: 12 june 2025
 
 This is my 'final project' for Code in Place 2025.
 
@@ -13,9 +13,6 @@ The bottom player needs to use the Left and Right arrow key.
 The top player needs to use the mouse.
 
 What work is still to be done to improve the game:
-Todo: fix ArrowKeys when playing offline
-canvas.bind("<Left>", move_paddle_left)
-canvas.bind("<Right>", move_paddle_right)
 
 Todo: bonus items
 With bonus items a player can earn extra points. Bonus items are
@@ -36,49 +33,88 @@ After the user clicked an item and another item is clicked, the latter is kept
 Todo: confetti end_screen
 give Code in Place user option to show confetti too
 """
-
-import os
-if os.getcwd() == '/home/pyodide':
-    # True if run in Code in Place
-    RUN_IN_CODE_IN_PLACE = True
-else:
-    RUN_IN_CODE_IN_PLACE = False
-
 from graphics import Canvas
 import time
 import random
 import sys
 import os
+
+DEBUG = True
+RUN_IN_CODE_IN_PLACE = True if (os.getcwd() == '/home/pyodide') else False
 if RUN_IN_CODE_IN_PLACE:
     from ai import call_gpt
+    print("Running in Code in Place!")
 
 # CONSTANTS NOT TO CHANGE
 CANVAS_WIDTH = 400
 CANVAS_HEIGHT = 400
-PADDLE_Y1 = CANVAS_HEIGHT - 30      # bottom paddle
-PADDLE_Y2 = 15                      # top paddle
-PADDLE_WIDTH = 80
-PADDLE_HEIGHT = 15
+PADDLE_Y1 = CANVAS_HEIGHT - 30  # bottom paddle
+PADDLE_Y2 = 15  # top paddle
 BALL_RADIUS = 10
 OFFSET = 8
 BOX_SIZE = 30
 
 # CHANGEABLE CONSTANTS
-if RUN_IN_CODE_IN_PLACE:
-    SPEED = 0               # closer to 0 is faster
-else:
-    SPEED = 0.01
-ROUNDS = ['9', '3', '5']    # keep odd and single digit
-CONFETTI = 200               # amount of confetti
+SPEED = 0 if RUN_IN_CODE_IN_PLACE else 0.01
+ROUNDS = ['9', '3', '5']  # keep odd and single digit
+CONFETTI = 200  # amount of confetti
+PADDLE_WIDTH = 80
+PADDLE_HEIGHT = 15
+
+
+def get_items_dict(color=''):
+    """
+    The items dict contains all the menu items:
+    key : the text shown on screen
+    value[0] : the x-coordinate
+    value[1] : the y-coordinate
+    value[2] : the font size
+    value[3] : the text color
+    value[4] : the box color
+    value[5] : box x2-coordinate
+    value[6] : box y2-coordinate
+    value[7] : objectId
+    value[8] : screen type
+    """
+    title_size = 30
+    subtitle_size = 15
+    no_size = 0
+    piller_size = 10
+    color = get_random_color()
+    flip_color = 'red'
+
+    items = {
+        # Title:
+        'Paddle Game': [100, 50, title_size, color, flip_color, 300, 100, None, 'start'],
+        # Menu items for number_of_rounds
+        'Rounds':   [50,    150, subtitle_size, color, flip_color, 125, 180, None, 'start'],
+        ROUNDS[0]:  [175,   155, subtitle_size, "white", color, 205, 185, None, 'start'],
+        ROUNDS[1]:  [225,   155, subtitle_size, "white", color, 255, 185, None, 'start'],
+        ROUNDS[2]:  [275,   155, subtitle_size, "white", color, 305, 185, None, 'start'],
+        ' ':        [80,    250, subtitle_size, 'white', 'white', 80, 280, None, 'start'],
+        'Exit':     [50,    250, subtitle_size, color, flip_color, 125, 280, None, 'start'],
+        # Paddles
+        'paddle_1': [160, PADDLE_Y1, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y1 + PADDLE_HEIGHT, None, 'play'],
+        'paddle_2': [160, PADDLE_Y2, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y2 + PADDLE_HEIGHT, None, 'play'],
+        # Bonus items
+        ## Start
+        'pillar_1': [100-piller_size, 100-piller_size, no_size, 'black', 'green', 100+piller_size, 100+piller_size, None, 'play'],
+        'pillar_2': [300-piller_size, 100-piller_size, no_size, 'black', 'green', 300+piller_size, 100+piller_size, None, 'play'],
+        'pillar_3': [100-piller_size, 300-piller_size, no_size, 'black', 'green', 100+piller_size, 300+piller_size, None, 'play'],
+        'pillar_4': [300-piller_size, 300-piller_size, no_size, 'black', 'green', 300+piller_size, 300+piller_size, None, 'play']
+    }
+    return items
+
 
 def main():
     canvas = Canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
+    items = get_items_dict()
     while True:
-        key = start_screen(canvas)
+        key = start(canvas, items)
         if key in ROUNDS:
             rounds_to_play = int(key)
-            score = play(canvas, rounds_to_play)
-            end_screen(canvas, score)
+            score = play(canvas, rounds_to_play, items)
+            end(canvas, score)
         elif key in [' ', 'Exit']:
             canvas.clear()
             if not RUN_IN_CODE_IN_PLACE:
@@ -87,101 +123,32 @@ def main():
                 exit_screen(canvas)
 
 
-def start_screen(canvas):
-    items, info, color = build_start_screen(canvas)
-    while True:
-        if RUN_IN_CODE_IN_PLACE:
-            canvas.wait_for_click()
-            click = canvas.get_last_click()
-        else:
-            # graphics.py (def wait_for_click(self)): 'return [self.get_mouse_x(), self.get_mouse_y()];
-            click = canvas.wait_for_click()
-        if click:
-            x = click[0]
-            y = click[1]
-
-            for key in items:
-                if key in ['Paddle Game', 'Rounds']:
-                    continue
-
-                x1 = items[key][0]-OFFSET
-                y1 = items[key][1]-OFFSET
-                x2 = x1 + BOX_SIZE
-                y2 = y1 + BOX_SIZE
-
-                if x1 <= x <= x2 and y1 <= y <= y2:
-                    if key in [' ', 'Exit']:
-                        return key
-                    canvas.delete(key)
-                    canvas.create_rectangle(                # 0 - 4
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        color = 'red'
-                    )
-                    canvas.create_text(
-                        items[key][0],
-                        items[key][1],
-                        text = key,
-                        font = 'Arial',
-                        font_size = items[key][2],
-                        color = 'black'
-                    )
-                    click_to_continue(canvas, info, color=color)
-                    canvas.clear()
-                    if not RUN_IN_CODE_IN_PLACE:
-                        canvas.update()
-                    return key
-        if not RUN_IN_CODE_IN_PLACE:
-            canvas.update()
-
-
-def play(canvas, rounds_to_play):
+def play(canvas, rounds_to_play, items):
     """
     Loops to play the game.
     change_x: the direction of the x-coordinates.
     change_y: the direction of the y-coordinates.
     """
-    show_image(canvas, 'soft')
-    paddle_1 = launch_paddle(canvas, 'paddle_1')
-    paddle_2 = launch_paddle(canvas, 'paddle_2')
+    global ball, change_x, change_y, counter, score
+
+    create_play_screen(canvas, items)
     score = [0,0]
 
     for i in range(rounds_to_play):
-        ball = launch_ball(canvas)
+        ball = create_ball(canvas)
+        canvas.wait_for_click()
         # initial movement of ball in random direction
-        change_x = random.choice([-1, 1])
-        change_y = random.choice([-1, 1])
+        change_x = get_random_direction()
+        change_y = get_random_direction()
+        counter = 0
         while True:
             canvas.move(ball, change_x, change_y)
-            move_paddle_mouse(canvas, paddle_2)
-            if RUN_IN_CODE_IN_PLACE:
-                move_paddle_keys(canvas, paddle_1)
-            else:
-                canvas.bind("<Left>", move_paddle_left(canvas, paddle_1))
-                canvas.bind("<Right>", move_paddle_right(canvas, paddle_1))
-
-            change_y = paddle_touched(canvas, paddle_1, paddle_2, ball, change_y)
-
-            # ball bounces at the walls
-            x = canvas.get_left_x(ball)
-            if x < 0 or x > CANVAS_WIDTH - BALL_RADIUS * 2:
-                change_x = -change_x
-
-            # if ball not caught
-            y_top = canvas.get_top_y(ball)
-            y_bottom = y_top + BALL_RADIUS*2 - 1
-            y_top += 1
-            ## at player one's side:
-            if (y_bottom > PADDLE_Y1) and (y_top > CANVAS_HEIGHT/2):
-                canvas.delete(ball)
-                score[1] += 1
-                break
-            ## at player two's side:
-            elif (y_top < PADDLE_Y2 + PADDLE_HEIGHT) and (y_top < CANVAS_HEIGHT/2):
-                canvas.delete(ball)
-                score[0] += 1
+            move_paddle_mouse(canvas)
+            move_paddle_keys(canvas)
+            point_scored = colliders(canvas, items)
+            if counter % 10 == 0:
+                create_bonus_items(canvas, 'rounds10')
+            if point_scored:
                 break
             time.sleep(SPEED)
             if not RUN_IN_CODE_IN_PLACE:
@@ -194,7 +161,119 @@ def play(canvas, rounds_to_play):
     return score
 
 
-def end_screen(canvas, score):
+def colliders(canvas, items):
+    """
+    Function to handle the collision with paddles and pillars.
+    Returns a swapped change_y if the paddle is touched.
+    """
+    global ball, change_x, change_y
+
+    # To not have the ball gluing to objects, 1 pixel before touching the ball returns
+    glue_fixer = 0
+    # retrieve the x and y coordinates of the ball:
+    x1_ball = canvas.get_left_x(ball) - glue_fixer
+    y1_ball = canvas.get_top_y(ball) - glue_fixer
+    x2_ball = x1_ball + 2 * BALL_RADIUS + glue_fixer
+    y2_ball = y1_ball + 2 * BALL_RADIUS + glue_fixer
+    # retrieve the items that the ball collides with:
+    colliding_with = canvas.find_overlapping(x1_ball, y1_ball, x2_ball, y2_ball)
+
+    '''check x position of ball'''
+    if x1_ball <= 0 or x2_ball > CANVAS_WIDTH:
+        # ball bounces at the walls
+        change_x = -change_x
+        return False
+
+    '''check y position of ball'''
+    # if ball not caught:
+    if (y2_ball > PADDLE_Y1 + 1) and (y1_ball > CANVAS_HEIGHT / 2):
+        # player 1
+        canvas.delete(ball)
+        score[1] += 1
+        create_bonus_items(canvas, 'player_1')
+        return True
+    elif (y1_ball < PADDLE_Y2 + PADDLE_HEIGHT - 1) and (y1_ball < CANVAS_HEIGHT / 2):
+        # player 2
+        canvas.delete(ball)
+        score[0] += 1
+        create_bonus_items(canvas, 'player_2')
+        return True
+
+    for key, value in items.items():
+        if value[7] in colliding_with:
+            if key in ['paddle_1', 'paddle_2']:
+                # ball caught with paddle
+                change_y = -change_y
+            elif key in ['pillar_1', 'pillar_2', 'pillar_3', 'pillar_4']:
+                change_x = get_random_direction()
+                change_y = get_random_direction()
+    return False
+
+
+def start(canvas, items):
+    info = create_start_screen(canvas, items)
+    while True:
+        if RUN_IN_CODE_IN_PLACE:
+            canvas.wait_for_click()
+            click = canvas.get_last_click()
+        else:
+            # graphics.py (def wait_for_click(self)): 'return [self.get_mouse_x(), self.get_mouse_y()];
+            click = canvas.wait_for_click()
+        if click:
+            x = click[0]
+            y = click[1]
+            key = get_start_screen_key(items, x, y)
+            if key in ROUNDS:
+                start_screen_updater(canvas, items, key, info)
+                return key
+            else:
+                continue
+        if not RUN_IN_CODE_IN_PLACE:
+            canvas.update()
+
+
+def start_screen_updater(canvas, items, key, info):
+    canvas.delete(key)
+    value = items[key]
+    canvas.create_rectangle(
+        value[0],
+        value[1],
+        value[5],
+        value[6],
+        color='red'
+    )
+    canvas.create_text(
+        value[0],
+        value[1],
+        text=key,
+        font='Arial',
+        font_size=value[2],
+        color='white'
+    )
+    start_screen_wait_for_user(canvas, info)
+    if not RUN_IN_CODE_IN_PLACE:
+        canvas.update()
+
+
+def start_screen_wait_for_user(canvas, info):
+    """
+    Function to update the info box
+    and wait for the user to click.
+    """
+    if RUN_IN_CODE_IN_PLACE:
+        canvas.change_text(info, "    Click to continue...")
+    else:
+        canvas.delete(info)
+        canvas.create_text(
+            15,
+            CANVAS_HEIGHT - 50,
+            "    Click to continue...",
+            color='red'
+        )
+    canvas.wait_for_click()
+
+
+def end(canvas, score):
     """
     Function that creates the end_screen
     """
@@ -211,21 +290,21 @@ def end_screen(canvas, score):
 
     # lol
     if RUN_IN_CODE_IN_PLACE:
-        end_screen_colors(canvas, score)
+        create_end_screen_colors_frame(canvas, score)
     else:
-        end_screen_confetti(canvas, score)
+        create_end_screen_confetti_frame(canvas, score)
         canvas.update()
     canvas.wait_for_click()
-    show_image(canvas, 'soft')
+    create_background_image(canvas, 'soft')
     haiku_color = get_random_color()
     for i in range(len(haiku)):
         canvas.create_text(
             50,
-            85 + i*60,
-            text = haiku[i],
-            font = 'Arial',
-            font_size = 20,
-            color = haiku_color
+            85 + i * 60,
+            text=haiku[i],
+            font='Arial',
+            font_size=20,
+            color=haiku_color
         )
     canvas.wait_for_click()
     canvas.clear()
@@ -238,31 +317,176 @@ def exit_screen(canvas):
     Function to show exit_screen, only used when
     RUN_IN_CODE_IN_PLACE = True
     """
-    show_image(canvas, 'soft')
+    create_background_image(canvas, 'soft')
     canvas.create_text(
         20,
-        CANVAS_HEIGHT/2-30,
-        text = "You can check out any time you like,",
-        font = 'Arial',
-        font_size = 15,
-        color = 'black'
-        )
+        CANVAS_HEIGHT / 2 - 30,
+        text="You can check out any time you like,",
+        font='Arial',
+        font_size=15,
+        color='black'
+    )
     canvas.create_text(
         20,
-        CANVAS_HEIGHT/2,
-        text = "but you can never leave.",
-        font = 'Arial',
-        font_size = 15,
-        color = 'black'
-        )
+        CANVAS_HEIGHT / 2,
+        text="but you can never leave.",
+        font='Arial',
+        font_size=15,
+        color='black'
+    )
     canvas.wait_for_click()
     canvas.clear()
 
 
-def end_screen_confetti(canvas, score):
-    show_image(canvas, 'soft')
+def move_paddle_keys(canvas):
+    """
+    Function to move the paddle with the keys.
+    """
+    global paddle_1, pressed_key
+
+    # get the x position of the paddle
+    paddle_x = canvas.get_left_x(paddle_1)
+    # determine the movement
+    if RUN_IN_CODE_IN_PLACE:
+        pressed_key = canvas.get_last_key_press()
+    else:
+        pressed_key = canvas.get_new_key_presses()
+        if pressed_key:
+            if pressed_key[0].keysym == 'Left':
+                pressed_key = 'ArrowLeft'
+            elif pressed_key[0].keysym == 'Right':
+                pressed_key = 'ArrowRight'
+    if pressed_key == 'ArrowLeft' and paddle_x > 0:
+        paddle_x -= 10
+    elif pressed_key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
+        paddle_x += 10
+    # and move the paddle to the new location
+    canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
+
+
+def move_paddle_left(canvas):
+    global paddle_1
+
+    paddle_x = canvas.get_left_x(paddle_1)
+    x = paddle_x - 10
+    print("Left", paddle_x, x)
+    if paddle_x > 0:
+        canvas.moveto(paddle_1, x, PADDLE_Y1)
+
+
+def move_paddle_right(canvas):
+    global paddle_1
+
+    paddle_x = canvas.get_left_x(paddle_1)
+    x = paddle_x + 10
+    print("Right", paddle_x, x)
+    if paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
+        canvas.moveto(paddle_1, x, PADDLE_Y1)
+
+
+def move_paddle_mouse(canvas):
+    """
+    Function to move the paddle with the mouse
+    relative to the middle of the paddle.
+    """
+    global paddle_2
+
+    # get the x position of the paddle
+    paddle_x = canvas.get_left_x(paddle_2)
+
+    # determine the movement
+    mouse_x = canvas.get_mouse_x()
+    if mouse_x < (paddle_x + PADDLE_WIDTH / 2):
+        if paddle_x > 0:
+            paddle_x -= 3
+    elif mouse_x > paddle_x:
+        paddle_x += 3
+        if paddle_x + PADDLE_WIDTH > CANVAS_WIDTH:
+            paddle_x = CANVAS_WIDTH - PADDLE_WIDTH
+    canvas.moveto(paddle_2, paddle_x, PADDLE_Y2)
+
+
+def create_start_screen(canvas, items):
+    create_background_image(canvas)
+
+    for key, value in items.items():
+        if key in ROUNDS:
+            create_square(canvas, items, key)
+        if value[2] != 0 and value[8] == 'start':
+            canvas.create_text(
+                value[0],
+                value[1],
+                text=key,
+                font='Arial',
+                font_size=value[2],
+                color=value[3]
+            )
+
+    info = canvas.create_text(
+        15,
+        CANVAS_HEIGHT - 50,
+        "Player 1: arrow keys - Player 2: mouse.",
+        color='red'
+    )
+    return info
+
+
+def create_play_screen(canvas, items):
+    global paddle_1, paddle_2, pillar_1, pillar_2, pillar_3, pillar_4
+
+    create_background_image(canvas, 'soft')
+    create_bonus_items(canvas, 'start')
+
+    paddle_1 = create_play_screen_elements(canvas, 'paddle_1', items)
+    paddle_2 = create_play_screen_elements(canvas, 'paddle_2', items)
+    pillar_1 = create_play_screen_elements(canvas, 'pillar_1', items)
+    pillar_2 = create_play_screen_elements(canvas, 'pillar_2', items)
+    pillar_3 = create_play_screen_elements(canvas, 'pillar_3', items)
+    pillar_4 = create_play_screen_elements(canvas, 'pillar_4', items)
+
+
+def create_play_screen_elements(canvas, element, items):
+    play_screen_element = canvas.create_rectangle(
+        items[element][0],
+        items[element][1],
+        items[element][5],
+        items[element][6],
+        items[element][3]
+    )
+    items[element][7] = play_screen_element
+    return play_screen_element
+
+
+def create_ball(canvas):
+    """
+    Function to create the ball
+    """
+
+    ball_x1 = CANVAS_WIDTH / 2 - BALL_RADIUS
+    ball_y1 = CANVAS_HEIGHT / 2 - BALL_RADIUS
+    ball_x2 = ball_x1 + BALL_RADIUS * 2
+    ball_y2 = ball_y1 + BALL_RADIUS * 2
+    ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, "black")
+    return ball
+
+
+def create_bonus_items(canvas, event):
+    """
+    Funtion that creates bonus items on the screen.
+
+    It happens on three occasions:
+    - start
+    - point scored
+    - 10th round played
+
+    """
+    pass
+
+
+def create_end_screen_confetti_frame(canvas, score):
+    create_background_image(canvas, 'soft')
     for i in range(CONFETTI):
-        show_score(canvas, score)
+        create_score_text(canvas, score)
         confetti_color = get_confetti_color()
         # define random size
         size = random.randint(1, 20)
@@ -271,17 +495,17 @@ def end_screen_confetti(canvas, score):
         y_coordinate = random.randint(0, CANVAS_HEIGHT - size)
         function = random.choice(["circle", "rectangle", "line"])
         if function == "circle":
-            confetti_circle(canvas, x_coordinate, y_coordinate, size, confetti_color)
+            create_confetti_circle(canvas, x_coordinate, y_coordinate, size, confetti_color)
         elif function == "rectangle":
-            confetti_square(canvas, x_coordinate, y_coordinate, size, confetti_color)
+            create_confetti_square(canvas, x_coordinate, y_coordinate, size, confetti_color)
         elif function == "line":
             length = random.randint(50, 250)
-            confetti_line(canvas, x_coordinate, y_coordinate, confetti_color, length, size)
+            create_confetti_line(canvas, x_coordinate, y_coordinate, confetti_color, length, size)
         canvas.update()
         time.sleep(0.1)
 
 
-def confetti_line(canvas, x1, y1, color, length=100, width=1):
+def create_confetti_line(canvas, x1, y1, color, length=100, width=1):
     """
     This function draws a line.
     """
@@ -290,7 +514,7 @@ def confetti_line(canvas, x1, y1, color, length=100, width=1):
     canvas.create_line(x1, y1, x2, y2, fill=color)
 
 
-def confetti_square(canvas, x1, y1, size, color):
+def create_confetti_square(canvas, x1, y1, size, color):
     """
     This function draws a square.
     """
@@ -299,7 +523,7 @@ def confetti_square(canvas, x1, y1, size, color):
     canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
 
-def confetti_circle(canvas, x1, y1, size, color):
+def create_confetti_circle(canvas, x1, y1, size, color):
     """
     This function draws a circle.
     """
@@ -308,34 +532,16 @@ def confetti_circle(canvas, x1, y1, size, color):
     canvas.create_oval(x1, y1, x2, y2, color)
 
 
-def get_confetti_color():
-    """
-    Function that returns a random color.
-    """
-    colors = [
-        'orange',
-        'coral',
-        'tomato',
-        'red',
-        'hot pink',
-        'deep pink',
-        'maroon',
-        'medium purple',
-        'purple'
-        ]
-    return random.choice(colors)
-
-
-def end_screen_colors(canvas, score):
+def create_end_screen_colors_frame(canvas, score):
     colors = get_end_screen_colors()
     for i in range(len(colors)):
-        screen = canvas.create_rectangle(0,0,CANVAS_WIDTH,CANVAS_HEIGHT,colors[i])
-        show_score(canvas, score)
+        screen = canvas.create_rectangle(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, colors[i])
+        create_score_text(canvas, score)
         time.sleep(0.1)
         canvas.delete(screen)
 
 
-def show_score(canvas, score):
+def create_score_text(canvas, score):
     score_dict = {
         'player1': [str(score[0]), 80],
         '-': [' - ', CANVAS_WIDTH / 2 - 35],
@@ -352,62 +558,7 @@ def show_score(canvas, score):
         )
 
 
-def build_start_screen(canvas):
-    show_image(canvas)
-    color = get_random_color()
-
-    """
-    The items dict contains all the menu items:
-    key : the text shown on screen
-    value[0] : the x-coordinate
-    value[1] : the y-coordinate
-    value[2] : the font size
-    value[3] : the text color
-    value[4] : the box color    
-    """
-
-    items = {
-
-        # Title:
-        'Paddle Game':  [100,   50,     30, color, 'white'],
-
-        # Menu items for number_of_rounds
-        'Rounds':   [50,    150,    30, color, ''],
-        ROUNDS[0]:  [175,   155,    20, 'white', color],
-        ROUNDS[1]:  [225,   155,    20, 'white', color],
-        ROUNDS[2]:  [275,   155,    20, 'white', color],
-        ' ':        [80,    250,    30, 'white', 'white'],
-        'Exit':     [50,    250,    30, color, 'white']
-        }
-
-    for key in items:
-        if key in ROUNDS:
-            canvas.create_rectangle(                # 0 - 4
-                items[key][0]-OFFSET,
-                items[key][1]-OFFSET,
-                items[key][0]-OFFSET+BOX_SIZE,
-                items[key][1]-OFFSET+BOX_SIZE,
-                color = items[key][4]
-            )
-        canvas.create_text(                     # 5 - 9
-            items[key][0],
-            items[key][1],
-            text = key,
-            font = 'Arial',
-            font_size = items[key][2],
-            color = items[key][3]
-        )
-
-    info = canvas.create_text(
-        15,
-        CANVAS_HEIGHT-50,
-        "Player 1: arrow keys - Player 2: mouse.",
-        color = color
-        )
-    return items, info, color
-
-
-def show_image(canvas, pic_type='hard'):
+def create_background_image(canvas, pic_type='hard'):
     """
     Function to show the background image
     """
@@ -417,121 +568,32 @@ def show_image(canvas, pic_type='hard'):
         canvas.create_image(0, 0, 'paddle.jpg')
 
 
-def click_to_continue(canvas, info, color=''):
-    """
-    Function to update the info box
-    and wait for the user to click.
-    """
-    if RUN_IN_CODE_IN_PLACE:
-        canvas.change_text(info, "    Click to continue...")
-    else:
-        canvas.delete(info)
-        canvas.create_text(
-            15,
-            CANVAS_HEIGHT - 50,
-            "    Click to continue...",
-            color=color
-        )
-    canvas.wait_for_click()
+def create_square(canvas, items, key):
+    square = canvas.create_rectangle(
+        items[key][0],
+        items[key][1],
+        items[key][5],
+        items[key][6],
+        color=items[key][4]
+    )
+    return square
 
 
-def paddle_touched(canvas, paddle_1, paddle_2, ball, change_y):
-    """
-    Function to handle the collision with paddle.
-    Returns a swapped change_y if the paddle is touched.
-    """
-    x1 = canvas.get_left_x(ball)
-    y1 = canvas.get_top_y(ball)
-    x2 = x1 + 2 * BALL_RADIUS
-    y2 = y1 + 2 * BALL_RADIUS
-
-    colliders = canvas.find_overlapping(x1, y1, x2, y2)
-    if paddle_1 in colliders or paddle_2 in colliders:
-        # paddle touched
-        change_y = -change_y
-    return change_y
+def get_random_direction():
+    return random.choice([-1, 1])
 
 
-def move_paddle_keys(canvas, paddle_1):
-    """
-    Function to move the paddle with the keys.
-    """
-    # get the x position of the paddle
-    paddle_x = canvas.get_left_x(paddle_1)
-    # determine the movement
-    key = canvas.get_last_key_press()
-    if key == 'ArrowLeft' and paddle_x > 0:
-        paddle_x -= 10
-    elif key == 'ArrowRight' and paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
-        paddle_x += 10
-    # and move the paddle to the new location
-    canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
+def get_start_screen_key(items, x, y):
+    for key, value in items.items():
+        if key in ROUNDS:
+            x1 = value[0]
+            y1 = value[1]
+            x2 = value[5]
+            y2 = value[6]
 
-
-def move_paddle_left(canvas, paddle_1):
-    paddle_x = canvas.get_left_x(paddle_1)
-    x = paddle_x - 10
-    print("Left", paddle_x, x)
-    if paddle_x > 0:
-        canvas.moveto(paddle_1, x, PADDLE_Y1)
-
-
-def move_paddle_right(canvas, paddle_1):
-    paddle_x = canvas.get_left_x(paddle_1)
-    x = paddle_x + 10
-    print("Right", paddle_x, x)
-    if paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
-        canvas.moveto(paddle_1, x, PADDLE_Y1)
-
-
-def move_paddle_mouse(canvas, paddle_2):
-    """
-    Function to move the paddle with the mouse
-    relative to the middle of the paddle.
-    """
-    # get the x position of the paddle
-    paddle_x = canvas.get_left_x(paddle_2)
-
-    # determine the movement
-    mouse_x = canvas.get_mouse_x()
-    if mouse_x < (paddle_x + PADDLE_WIDTH / 2):
-        if paddle_x > 0:
-            paddle_x -= 1
-    elif mouse_x > paddle_x:
-        paddle_x += 1
-        if paddle_x + PADDLE_WIDTH > CANVAS_WIDTH:
-            paddle_x = CANVAS_WIDTH - PADDLE_WIDTH
-    canvas.moveto(paddle_2, paddle_x, PADDLE_Y2)
-
-
-def launch_paddle(canvas, paddle_id):
-    """
-    Function to create the paddle
-    """
-    # determine the lef_x and top_y positions:
-    paddle_x = CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2
-    paddle_y = PADDLE_Y1 if paddle_id == 'paddle_1' else PADDLE_Y2
-
-    # create the paddle:
-    paddle = canvas.create_rectangle(
-        paddle_x,
-        paddle_y,
-        paddle_x + + PADDLE_WIDTH,
-        paddle_y + PADDLE_HEIGHT,
-        "black")
-    return paddle
-
-
-def launch_ball(canvas):
-    """
-    Function to create the ball
-    """
-    ball_x1 = CANVAS_WIDTH/2 - BALL_RADIUS
-    ball_y1 = CANVAS_HEIGHT/2 - BALL_RADIUS
-    ball_x2 = ball_x1 + BALL_RADIUS*2
-    ball_y2 = ball_y1 + BALL_RADIUS*2
-    ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, "black")
-    return ball
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                return key
+    return None
 
 
 def get_random_color():
@@ -543,7 +605,25 @@ def get_random_color():
         'green',
         'blue',
         'purple'
-        ]
+    ]
+    return random.choice(colors)
+
+
+def get_confetti_color():
+    """
+    Function that returns a random color.
+    """
+    colors = [
+        'orange',
+        'coral',
+        'tomato',
+        'red',
+        'hot pink',
+        'deep pink',
+        'maroon',
+        'medium purple',
+        'purple'
+    ]
     return random.choice(colors)
 
 
@@ -582,7 +662,7 @@ def get_end_screen_colors():
         'light pink', 'pale violet red', 'maroon',
         'violet red', 'dark orchid', 'dark violet', 'blue violet', 'purple',
         'medium purple',
-        ]
+    ]
     return colors
 
 
