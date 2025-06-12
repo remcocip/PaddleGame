@@ -11,27 +11,6 @@ if a player misses the ball, a point goes to the other.
 
 The bottom player needs to use the Left and Right arrow key.
 The top player needs to use the mouse.
-
-What work is still to be done to improve the game:
-
-Todo: bonus items
-With bonus items a player can earn extra points. Bonus items are
-given at launch and provided after point and after amount of successful paddle touches
-
-Todo: show score
-Show the score in the play screen
-Show the score at the end_screen (with the haiku)
-
-Todo: start_screen options
-Color of the paddle
-Color of the ball
-Confetti
-
-Todo: changeable selection at start_screen
-After the user clicked an item and another item is clicked, the latter is kept
-
-Todo: confetti end_screen
-give Code in Place user option to show confetti too
 """
 from graphics import Canvas
 import time
@@ -39,7 +18,6 @@ import random
 import sys
 import os
 
-DEBUG = True
 RUN_IN_CODE_IN_PLACE = True if (os.getcwd() == '/home/pyodide') else False
 if RUN_IN_CODE_IN_PLACE:
     from ai import call_gpt
@@ -75,9 +53,11 @@ def get_items_dict(color=''):
     value[6] : box y2-coordinate
     value[7] : objectId
     value[8] : screen type
+    value[9] : menu option selected (None if not selectable)
+
     """
     title_size = 30
-    subtitle_size = 15
+    subtitle_size = 20
     no_size = 0
     piller_size = 10
     color = get_random_color()
@@ -85,23 +65,24 @@ def get_items_dict(color=''):
 
     items = {
         # Title:
-        'Paddle Game': [100, 50, title_size, color, flip_color, 300, 100, None, 'start'],
+        'Paddle Game': [70, 50, title_size, color, flip_color, 300, 100, None, 'start',None],
         # Menu items for number_of_rounds
-        'Rounds':   [50,    150, subtitle_size, color, flip_color, 125, 180, None, 'start'],
-        ROUNDS[0]:  [175,   155, subtitle_size, "white", color, 205, 185, None, 'start'],
-        ROUNDS[1]:  [225,   155, subtitle_size, "white", color, 255, 185, None, 'start'],
-        ROUNDS[2]:  [275,   155, subtitle_size, "white", color, 305, 185, None, 'start'],
-        ' ':        [80,    250, subtitle_size, 'white', 'white', 80, 280, None, 'start'],
-        'Exit':     [50,    250, subtitle_size, color, flip_color, 125, 280, None, 'start'],
+        'Rounds':   [50,    150, subtitle_size, color, flip_color, 125, 180, None, None,None],
+        ROUNDS[0]:  [CANVAS_WIDTH/3,   155, subtitle_size, "white", color, CANVAS_WIDTH/3+30, 185, None, 'start',False],
+        ROUNDS[1]:  [CANVAS_WIDTH/2,   155, subtitle_size, "white", color, CANVAS_WIDTH/2+30, 185, None, 'start',False],
+        ROUNDS[2]:  [CANVAS_WIDTH*2/3,   155, subtitle_size, "white", color, CANVAS_WIDTH*2/3+30, 185, None, 'start',False],
+        'Exit':     [30,    280, subtitle_size, 'red', flip_color, 105, 310, None, 'start',None],
+
         # Paddles
-        'paddle_1': [160, PADDLE_Y1, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y1 + PADDLE_HEIGHT, None, 'play'],
-        'paddle_2': [160, PADDLE_Y2, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y2 + PADDLE_HEIGHT, None, 'play'],
-        # Bonus items
-        ## Start
-        'pillar_1': [100-piller_size, 100-piller_size, no_size, 'black', 'green', 100+piller_size, 100+piller_size, None, 'play'],
-        'pillar_2': [300-piller_size, 100-piller_size, no_size, 'black', 'green', 300+piller_size, 100+piller_size, None, 'play'],
-        'pillar_3': [100-piller_size, 300-piller_size, no_size, 'black', 'green', 100+piller_size, 300+piller_size, None, 'play'],
-        'pillar_4': [300-piller_size, 300-piller_size, no_size, 'black', 'green', 300+piller_size, 300+piller_size, None, 'play']
+        'paddle_1': [160, PADDLE_Y1, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y1 + PADDLE_HEIGHT, None, 'play',None],
+        'paddle_2': [160, PADDLE_Y2, no_size, 'black', 'red', 160 + PADDLE_WIDTH, PADDLE_Y2 + PADDLE_HEIGHT, None, 'play',None],
+
+        # obstacles
+        'pillar_1': [75, 100, no_size, 'red', 'green', 85, 150, None, 'play'],
+        'pillar_3': [200, 300, no_size, 'magenta', 'green', 220, 310, None, 'play'],
+        'pillar_5': [50, 250, no_size, 'white', 'green', 65, 260, None, 'play'],
+        'pillar_7': [180, 100, no_size, 'red', 'green', 210, 115, None, 'play'],
+        'pillar_8': [320, 260, no_size, 'red', 'green', 330, 310, None, 'play']
     }
     return items
 
@@ -115,7 +96,7 @@ def main():
             rounds_to_play = int(key)
             score = play(canvas, rounds_to_play, items)
             end(canvas, score)
-        elif key in [' ', 'Exit']:
+        elif key == 'Exit':
             canvas.clear()
             if not RUN_IN_CODE_IN_PLACE:
                 sys.exit()
@@ -129,7 +110,7 @@ def play(canvas, rounds_to_play, items):
     change_x: the direction of the x-coordinates.
     change_y: the direction of the y-coordinates.
     """
-    global ball, change_x, change_y, counter, score
+    global ball, change_x, change_y
 
     create_play_screen(canvas, items)
     score = [0,0]
@@ -140,14 +121,11 @@ def play(canvas, rounds_to_play, items):
         # initial movement of ball in random direction
         change_x = get_random_direction()
         change_y = get_random_direction()
-        counter = 0
         while True:
             canvas.move(ball, change_x, change_y)
             move_paddle_mouse(canvas)
             move_paddle_keys(canvas)
-            point_scored = colliders(canvas, items)
-            if counter % 10 == 0:
-                create_bonus_items(canvas, 'rounds10')
+            point_scored = colliders(canvas, items, score)
             if point_scored:
                 break
             time.sleep(SPEED)
@@ -161,7 +139,7 @@ def play(canvas, rounds_to_play, items):
     return score
 
 
-def colliders(canvas, items):
+def colliders(canvas, items, score):
     """
     Function to handle the collision with paddles and pillars.
     Returns a swapped change_y if the paddle is touched.
@@ -190,13 +168,11 @@ def colliders(canvas, items):
         # player 1
         canvas.delete(ball)
         score[1] += 1
-        create_bonus_items(canvas, 'player_1')
         return True
     elif (y1_ball < PADDLE_Y2 + PADDLE_HEIGHT - 1) and (y1_ball < CANVAS_HEIGHT / 2):
         # player 2
         canvas.delete(ball)
         score[0] += 1
-        create_bonus_items(canvas, 'player_2')
         return True
 
     for key, value in items.items():
@@ -204,7 +180,7 @@ def colliders(canvas, items):
             if key in ['paddle_1', 'paddle_2']:
                 # ball caught with paddle
                 change_y = -change_y
-            elif key in ['pillar_1', 'pillar_2', 'pillar_3', 'pillar_4']:
+            elif key in ['pillar_1', 'pillar_2', 'pillar_3', 'pillar_4', 'pillar_5', 'pillar_6', 'pillar_7', 'pillar_8']:
                 change_x = get_random_direction()
                 change_y = get_random_direction()
     return False
@@ -225,9 +201,7 @@ def start(canvas, items):
             key = get_start_screen_key(items, x, y)
             if key in ROUNDS:
                 start_screen_updater(canvas, items, key, info)
-                return key
-            else:
-                continue
+            return key
         if not RUN_IN_CODE_IN_PLACE:
             canvas.update()
 
@@ -243,8 +217,8 @@ def start_screen_updater(canvas, items, key, info):
         color='red'
     )
     canvas.create_text(
-        value[0],
-        value[1],
+        value[0] + OFFSET,
+        value[1] + OFFSET,
         text=key,
         font='Arial',
         font_size=value[2],
@@ -289,12 +263,7 @@ def end(canvas, score):
         haiku = ["In a pixel world", f"{winner.title()} claims the crown", "Victory's sweet sound."]
 
     # lol
-    if RUN_IN_CODE_IN_PLACE:
-        create_end_screen_colors_frame(canvas, score)
-    else:
-        create_end_screen_confetti_frame(canvas, score)
-        canvas.update()
-    canvas.wait_for_click()
+    create_end_screen_confetti_frame(canvas, score)
     create_background_image(canvas, 'soft')
     haiku_color = get_random_color()
     for i in range(len(haiku)):
@@ -364,26 +333,6 @@ def move_paddle_keys(canvas):
     canvas.moveto(paddle_1, paddle_x, PADDLE_Y1)
 
 
-def move_paddle_left(canvas):
-    global paddle_1
-
-    paddle_x = canvas.get_left_x(paddle_1)
-    x = paddle_x - 10
-    print("Left", paddle_x, x)
-    if paddle_x > 0:
-        canvas.moveto(paddle_1, x, PADDLE_Y1)
-
-
-def move_paddle_right(canvas):
-    global paddle_1
-
-    paddle_x = canvas.get_left_x(paddle_1)
-    x = paddle_x + 10
-    print("Right", paddle_x, x)
-    if paddle_x < CANVAS_WIDTH - PADDLE_WIDTH:
-        canvas.moveto(paddle_1, x, PADDLE_Y1)
-
-
 def move_paddle_mouse(canvas):
     """
     Function to move the paddle with the mouse
@@ -414,8 +363,8 @@ def create_start_screen(canvas, items):
             create_square(canvas, items, key)
         if value[2] != 0 and value[8] == 'start':
             canvas.create_text(
-                value[0],
-                value[1],
+                value[0] + OFFSET,
+                value[1] + OFFSET,
                 text=key,
                 font='Arial',
                 font_size=value[2],
@@ -432,17 +381,17 @@ def create_start_screen(canvas, items):
 
 
 def create_play_screen(canvas, items):
-    global paddle_1, paddle_2, pillar_1, pillar_2, pillar_3, pillar_4
+    global paddle_1, paddle_2, pillar_1, pillar_3, pillar_4, pillar_5, pillar_7, pillar_8
 
     create_background_image(canvas, 'soft')
-    create_bonus_items(canvas, 'start')
 
     paddle_1 = create_play_screen_elements(canvas, 'paddle_1', items)
     paddle_2 = create_play_screen_elements(canvas, 'paddle_2', items)
     pillar_1 = create_play_screen_elements(canvas, 'pillar_1', items)
-    pillar_2 = create_play_screen_elements(canvas, 'pillar_2', items)
     pillar_3 = create_play_screen_elements(canvas, 'pillar_3', items)
-    pillar_4 = create_play_screen_elements(canvas, 'pillar_4', items)
+    pillar_5 = create_play_screen_elements(canvas, 'pillar_5', items)
+    pillar_7 = create_play_screen_elements(canvas, 'pillar_7', items)
+    pillar_8 = create_play_screen_elements(canvas, 'pillar_8', items)
 
 
 def create_play_screen_elements(canvas, element, items):
@@ -470,19 +419,6 @@ def create_ball(canvas):
     return ball
 
 
-def create_bonus_items(canvas, event):
-    """
-    Funtion that creates bonus items on the screen.
-
-    It happens on three occasions:
-    - start
-    - point scored
-    - 10th round played
-
-    """
-    pass
-
-
 def create_end_screen_confetti_frame(canvas, score):
     create_background_image(canvas, 'soft')
     for i in range(CONFETTI):
@@ -501,7 +437,8 @@ def create_end_screen_confetti_frame(canvas, score):
         elif function == "line":
             length = random.randint(50, 250)
             create_confetti_line(canvas, x_coordinate, y_coordinate, confetti_color, length, size)
-        canvas.update()
+        if not RUN_IN_CODE_IN_PLACE:
+            canvas.update()
         time.sleep(0.1)
 
 
@@ -511,7 +448,7 @@ def create_confetti_line(canvas, x1, y1, color, length=100, width=1):
     """
     x2 = x1 + width
     y2 = y1 + length
-    canvas.create_line(x1, y1, x2, y2, fill=color)
+    canvas.create_line(x1, y1, x2, y2, color)
 
 
 def create_confetti_square(canvas, x1, y1, size, color):
@@ -520,7 +457,7 @@ def create_confetti_square(canvas, x1, y1, size, color):
     """
     x2 = x1 + size
     y2 = y1 + size
-    canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+    canvas.create_rectangle(x1, y1, x2, y2, color)
 
 
 def create_confetti_circle(canvas, x1, y1, size, color):
@@ -530,15 +467,6 @@ def create_confetti_circle(canvas, x1, y1, size, color):
     x2 = x1 + size
     y2 = y1 + size
     canvas.create_oval(x1, y1, x2, y2, color)
-
-
-def create_end_screen_colors_frame(canvas, score):
-    colors = get_end_screen_colors()
-    for i in range(len(colors)):
-        screen = canvas.create_rectangle(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, colors[i])
-        create_score_text(canvas, score)
-        time.sleep(0.1)
-        canvas.delete(screen)
 
 
 def create_score_text(canvas, score):
@@ -585,7 +513,7 @@ def get_random_direction():
 
 def get_start_screen_key(items, x, y):
     for key, value in items.items():
-        if key in ROUNDS:
+        if key in ROUNDS or key == 'Exit':
             x1 = value[0]
             y1 = value[1]
             x2 = value[5]
@@ -625,45 +553,6 @@ def get_confetti_color():
         'purple'
     ]
     return random.choice(colors)
-
-
-def get_end_screen_colors():
-    """
-    Function that returns a list full of colors
-    """
-    colors = [
-        'snow', 'ghost white', 'white smoke',
-        'gainsboro', 'floral white', 'old lace', 'linen',
-        'antique white', 'papaya whip', 'blanched almond',
-        'bisque', 'peach puff', 'navajo white', 'lemon chiffon',
-        'mint cream', 'azure', 'alice blue', 'lavender',
-        'lavender blush', 'misty rose', 'dark slate gray',
-        'dim gray', 'slate gray', 'light slate gray', 'gray',
-        'light gray', 'midnight blue', 'navy', 'cornflower blue',
-        'dark slate blue', 'slate blue', 'medium slate blue',
-        'light slate blue', 'medium blue', 'royal blue',
-        'blue', 'dodger blue', 'deep sky blue', 'sky blue',
-        'light sky blue', 'steel blue', 'light steel blue',
-        'light blue', 'powder blue', 'pale turquoise',
-        'dark turquoise', 'medium turquoise', 'turquoise',
-        'cyan', 'light cyan', 'cadet blue', 'medium aquamarine',
-        'aquamarine', 'dark green', 'dark olive green',
-        'dark sea green', 'sea green', 'medium sea green',
-        'light sea green', 'pale green', 'spring green',
-        'lawn green', 'medium spring green', 'green yellow',
-        'lime green', 'yellow green', 'forest green', 'olive drab',
-        'dark khaki', 'khaki', 'pale goldenrod',
-        'light goldenrod yellow', 'light yellow', 'yellow',
-        'gold', 'light goldenrod', 'goldenrod', 'dark goldenrod',
-        'rosy brown', 'indian red', 'saddle brown', 'sandy brown',
-        'dark salmon', 'salmon', 'light salmon', 'orange',
-        'dark orange', 'coral', 'light coral', 'tomato',
-        'orange red', 'red', 'hot pink', 'deep pink', 'pink',
-        'light pink', 'pale violet red', 'maroon',
-        'violet red', 'dark orchid', 'dark violet', 'blue violet', 'purple',
-        'medium purple',
-    ]
-    return colors
 
 
 if __name__ == '__main__':
