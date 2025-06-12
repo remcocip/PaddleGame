@@ -8,7 +8,7 @@ Version date: 12 June 2025
 
 ## **INSTALLATION:** 
 * python3 is installed
-* graphics.py library, copied from Stanford and changed
+* graphics.py library, copied from Stanford and changed (included in this repository)
 * pillow package: "python -m pip install pillow"
 
 ### **How do I play?**
