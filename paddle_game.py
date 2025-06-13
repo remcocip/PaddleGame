@@ -34,7 +34,7 @@ BOX_SIZE = 30
 
 # CHANGEABLE CONSTANTS
 SPEED = 0 if RUN_IN_CODE_IN_PLACE else 0.01
-ROUNDS = ['9', '3', '5']  # keep odd and single digit
+ROUNDS = ('9', '3', '5')  # keep odd and single digit
 CONFETTI = 50  # amount of confetti
 PADDLE_WIDTH = 80
 PADDLE_HEIGHT = 15
@@ -83,8 +83,8 @@ def get_items_dict():
         # obstacles
         'pillar_1': [75, 100, no_size, 'red', 'green', 85, 150, None, 'play'],
         'pillar_3': [200, 300, no_size, 'magenta', 'green', 220, 310, None, 'play'],
-        'pillar_5': [50, 250, no_size, 'white', 'green', 65, 260, None, 'play'],
-        'pillar_7': [180, 100, no_size, 'red', 'green', 210, 115, None, 'play'],
+        'pillar_5': [50, 200, no_size, 'white', 'green', 65, 210, None, 'play'],
+        'pillar_7': [180, 100, no_size, 'magenta', 'green', 200, 110, None, 'play'],
         'pillar_8': [320, 260, no_size, 'red', 'green', 330, 310, None, 'play']
     }
     return items
@@ -173,12 +173,13 @@ def colliders(canvas, items, score):
 
     '''check y position of ball'''
     # if ball not caught:
-    if (y2_ball > PADDLE_Y1 + 2) and (y1_ball > CANVAS_HEIGHT / 2):
+    # if (y2_ball > PADDLE_Y1 + 2) and (y1_ball > CANVAS_HEIGHT / 2):
+    if (y2_ball > CANVAS_HEIGHT) and (y1_ball > CANVAS_HEIGHT / 2):
         # player 1
         canvas.delete(ball)
         score[1] += 1
         return True
-    elif (y1_ball < PADDLE_Y2 + PADDLE_HEIGHT - 2) and (y1_ball < CANVAS_HEIGHT / 2):
+    elif (y1_ball < 0) and (y1_ball < CANVAS_HEIGHT / 2):
         # player 2
         canvas.delete(ball)
         score[0] += 1
@@ -225,15 +226,15 @@ def start_screen_updater(canvas, items, key, info):
     canvas.delete(key)
     value = items[key]
     canvas.create_rectangle(
-        value[0],
-        value[1],
-        value[5],
-        value[6],
+        value[0], # x1-coord
+        value[1], # y1-coord
+        value[5], # x2-coord
+        value[6], # y2-coord
         color='red'
     )
     canvas.create_text(
-        value[0] + OFFSET,
-        value[1] + OFFSET,
+        value[0] + OFFSET, # x-coord
+        value[1] + OFFSET, # y-coord
         text=key,
         font='Arial',
         font_size=value[2],
@@ -250,16 +251,25 @@ def start_screen_wait_for_user(canvas, info):
     and wait for the user to click.
     """
     if RUN_IN_CODE_IN_PLACE:
-        canvas.change_text(info, "    Click to continue...")
+        canvas.change_text(info, "Click to continue...")
+        canvas.wait_for_click()
     else:
         canvas.delete(info)
-        canvas.create_text(
-            15,
-            CANVAS_HEIGHT - 50,
-            "    Click to continue...",
-            color='red'
+        click_to_continue(canvas)
+
+
+def click_to_continue(canvas):
+    canvas.create_text(
+        CANVAS_WIDTH / 2,
+        CANVAS_HEIGHT - 50,
+        "Click to continue...",
+        color='lime green',
+        anchor='center',
         )
     canvas.wait_for_click()
+    canvas.clear()
+    if not RUN_IN_CODE_IN_PLACE:
+        canvas.update()
 
 
 def end(canvas, score):
@@ -277,23 +287,19 @@ def end(canvas, score):
     else:
         haiku = ["In a pixel world", f"{winner.title()} claims the crown", "Victory's sweet sound."]
 
-    # lol
     create_end_screen_confetti_frame(canvas, score)
     create_background_image(canvas, 'soft')
-    haiku_color = get_color()
     for i in range(len(haiku)):
         canvas.create_text(
             50,
-            85 + i * 60,
+            85 + i*60,
             text=haiku[i],
             font='Arial',
             font_size=20,
-            color=haiku_color
+            color="lime green"
         )
-    canvas.wait_for_click()
-    canvas.clear()
-    if not RUN_IN_CODE_IN_PLACE:
-        canvas.update()
+        time.sleep(1.5)
+    click_to_continue(canvas)
 
 
 def exit_screen(canvas):
@@ -308,7 +314,7 @@ def exit_screen(canvas):
         text="You can check out any time you like,",
         font='Arial',
         font_size=15,
-        color='black'
+        color='lime green'
     )
     canvas.create_text(
         20,
@@ -316,10 +322,9 @@ def exit_screen(canvas):
         text="but you can never leave.",
         font='Arial',
         font_size=15,
-        color='black'
+        color='lime green'
     )
-    canvas.wait_for_click()
-    canvas.clear()
+    click_to_continue(canvas)
 
 
 def move_paddle_keys(canvas):
@@ -378,7 +383,13 @@ def create_start_screen(canvas, items):
 
     for key, value in items.items():
         if key in ROUNDS:
-            create_square(canvas, items, key)
+            canvas.create_rectangle(
+                value[0],  # x1-coord
+                value[1],  # y1-coord
+                value[5],  # x2-coord
+                value[6],  # y2-coord
+                value[4]  # color
+            )
         if value[2] != 0 and value[8] == 'start':
             canvas.create_text(
                 value[0] + OFFSET,
@@ -416,21 +427,6 @@ def create_play_screen(canvas, items):
     pillar_8 = create_play_screen_elements(canvas, 'pillar_8', items)
 
 
-def create_play_screen_elements(canvas, element, items):
-    """
-    Function to create elements based on dictionary.
-    """
-    play_screen_element = canvas.create_rectangle(
-        items[element][0],
-        items[element][1],
-        items[element][5],
-        items[element][6],
-        items[element][3]
-    )
-    items[element][7] = play_screen_element
-    return play_screen_element
-
-
 def create_ball(canvas):
     """
     Function to create the ball.
@@ -440,7 +436,9 @@ def create_ball(canvas):
     ball_y1 = CANVAS_HEIGHT / 2 - BALL_RADIUS
     ball_x2 = ball_x1 + BALL_RADIUS * 2
     ball_y2 = ball_y1 + BALL_RADIUS * 2
-    new_ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, "black")
+    color = get_color()
+
+    new_ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, color)
     return new_ball
 
 
@@ -468,6 +466,7 @@ def create_end_screen_confetti_frame(canvas, score):
         if not RUN_IN_CODE_IN_PLACE:
             canvas.update()
         time.sleep(0.1)
+    click_to_continue(canvas)
 
 
 def create_confetti_line(canvas, x1, y1, color, length=100, width=1):
@@ -527,18 +526,20 @@ def create_background_image(canvas, pic_type='hard'):
         canvas.create_image(0, 0, 'paddle.jpg')
 
 
-def create_square(canvas, items, key):
+def create_play_screen_elements(canvas, key, items):
     """
-    Function to create a rectangle based on dictionary.
+    Function to create elements based on dictionary.
     """
-    square = canvas.create_rectangle(
-        items[key][0],
-        items[key][1],
-        items[key][5],
-        items[key][6],
-        color=items[key][4]
+    value = items[key]
+    play_screen_element = canvas.create_rectangle(
+        value[0], # x1-coord
+        value[1], # y1-coord
+        value[5], # x2-coord
+        value[6], # y2-coord
+        value[3]  # color
     )
-    return square
+    value[7] = play_screen_element # Canvas ObjectID
+    return play_screen_element
 
 
 def get_random_direction():
