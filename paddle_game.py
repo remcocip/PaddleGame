@@ -2,7 +2,7 @@
 File: paddle_game.py
 Author: Remco (remco.cip@gmail.com)
 Repository: https://github.com/remcocip/PaddleGame
-Version date: 12 june 2025
+Version date: Friday, June 13th 2025
 
 This is my 'final project' for Code in Place 2025.
 
@@ -35,13 +35,17 @@ BOX_SIZE = 30
 # CHANGEABLE CONSTANTS
 SPEED = 0 if RUN_IN_CODE_IN_PLACE else 0.01
 ROUNDS = ['9', '3', '5']  # keep odd and single digit
-CONFETTI = 200  # amount of confetti
+CONFETTI = 50  # amount of confetti
 PADDLE_WIDTH = 80
 PADDLE_HEIGHT = 15
 
+global ball, change_x, change_y, paddle_1, paddle_2, pillar_1, pillar_2, pillar_3, pillar_5, pillar_7, pillar_8
 
-def get_items_dict(color=''):
+def get_items_dict():
     """
+    Function to get the main dictionary with screen items.
+    Contains the names, locations and colors.
+
     The items dict contains all the menu items:
     key : the text shown on screen
     value[0] : the x-coordinate
@@ -59,8 +63,7 @@ def get_items_dict(color=''):
     title_size = 30
     subtitle_size = 20
     no_size = 0
-    piller_size = 10
-    color = get_random_color()
+    color = get_color()
     flip_color = 'red'
 
     items = {
@@ -88,6 +91,9 @@ def get_items_dict(color=''):
 
 
 def main():
+    """
+    Function to handle the main loop.
+    """
     canvas = Canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
     items = get_items_dict()
     while True:
@@ -106,7 +112,8 @@ def main():
 
 def play(canvas, rounds_to_play, items):
     """
-    Loops to play the game.
+    Function to handle the game loop.
+
     change_x: the direction of the x-coordinates.
     change_y: the direction of the y-coordinates.
     """
@@ -142,7 +149,9 @@ def play(canvas, rounds_to_play, items):
 def colliders(canvas, items, score):
     """
     Function to handle the collision with paddles and pillars.
-    Returns a swapped change_y if the paddle is touched.
+
+    Updates the score if a point is made.
+    Returns a new change_x and change_y.
     """
     global ball, change_x, change_y
 
@@ -164,12 +173,12 @@ def colliders(canvas, items, score):
 
     '''check y position of ball'''
     # if ball not caught:
-    if (y2_ball > PADDLE_Y1 + 1) and (y1_ball > CANVAS_HEIGHT / 2):
+    if (y2_ball > PADDLE_Y1 + 2) and (y1_ball > CANVAS_HEIGHT / 2):
         # player 1
         canvas.delete(ball)
         score[1] += 1
         return True
-    elif (y1_ball < PADDLE_Y2 + PADDLE_HEIGHT - 1) and (y1_ball < CANVAS_HEIGHT / 2):
+    elif (y1_ball < PADDLE_Y2 + PADDLE_HEIGHT - 2) and (y1_ball < CANVAS_HEIGHT / 2):
         # player 2
         canvas.delete(ball)
         score[0] += 1
@@ -187,6 +196,9 @@ def colliders(canvas, items, score):
 
 
 def start(canvas, items):
+    """
+    Function to handle the start menu loop.
+    """
     info = create_start_screen(canvas, items)
     while True:
         if RUN_IN_CODE_IN_PLACE:
@@ -207,6 +219,9 @@ def start(canvas, items):
 
 
 def start_screen_updater(canvas, items, key, info):
+    """
+    Function to update the start screen elements.
+    """
     canvas.delete(key)
     value = items[key]
     canvas.create_rectangle(
@@ -249,7 +264,7 @@ def start_screen_wait_for_user(canvas, info):
 
 def end(canvas, score):
     """
-    Function that creates the end_screen
+    Function to create the end_screen.
     """
     # determine the winner:
     winner = 'player 1' if score[0] > score[1] else 'player 2'
@@ -265,7 +280,7 @@ def end(canvas, score):
     # lol
     create_end_screen_confetti_frame(canvas, score)
     create_background_image(canvas, 'soft')
-    haiku_color = get_random_color()
+    haiku_color = get_color()
     for i in range(len(haiku)):
         canvas.create_text(
             50,
@@ -283,8 +298,8 @@ def end(canvas, score):
 
 def exit_screen(canvas):
     """
-    Function to show exit_screen, only used when
-    RUN_IN_CODE_IN_PLACE = True
+    Function to create the exit_screen,
+    only used when RUN_IN_CODE_IN_PLACE = True.
     """
     create_background_image(canvas, 'soft')
     canvas.create_text(
@@ -311,7 +326,7 @@ def move_paddle_keys(canvas):
     """
     Function to move the paddle with the keys.
     """
-    global paddle_1, pressed_key
+    # global paddle_1, pressed_key
 
     # get the x position of the paddle
     paddle_x = canvas.get_left_x(paddle_1)
@@ -356,6 +371,9 @@ def move_paddle_mouse(canvas):
 
 
 def create_start_screen(canvas, items):
+    """
+    Function to create the start screen elements.
+    """
     create_background_image(canvas)
 
     for key, value in items.items():
@@ -372,16 +390,20 @@ def create_start_screen(canvas, items):
             )
 
     info = canvas.create_text(
-        15,
+        CANVAS_WIDTH/2,
         CANVAS_HEIGHT - 50,
-        "Player 1: arrow keys - Player 2: mouse.",
-        color='red'
+        "Player 1: arrow keys        Player 2: mouse.",
+        color='lime green',
+        anchor='center'
     )
     return info
 
 
 def create_play_screen(canvas, items):
-    global paddle_1, paddle_2, pillar_1, pillar_3, pillar_4, pillar_5, pillar_7, pillar_8
+    """
+    Function to create the play screen elements.
+    """
+    global paddle_1, paddle_2, pillar_1, pillar_3, pillar_5, pillar_7, pillar_8
 
     create_background_image(canvas, 'soft')
 
@@ -395,6 +417,9 @@ def create_play_screen(canvas, items):
 
 
 def create_play_screen_elements(canvas, element, items):
+    """
+    Function to create elements based on dictionary.
+    """
     play_screen_element = canvas.create_rectangle(
         items[element][0],
         items[element][1],
@@ -408,22 +433,25 @@ def create_play_screen_elements(canvas, element, items):
 
 def create_ball(canvas):
     """
-    Function to create the ball
+    Function to create the ball.
     """
 
     ball_x1 = CANVAS_WIDTH / 2 - BALL_RADIUS
     ball_y1 = CANVAS_HEIGHT / 2 - BALL_RADIUS
     ball_x2 = ball_x1 + BALL_RADIUS * 2
     ball_y2 = ball_y1 + BALL_RADIUS * 2
-    ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, "black")
-    return ball
+    new_ball = canvas.create_oval(ball_x1, ball_y1, ball_x2, ball_y2, "black")
+    return new_ball
 
 
 def create_end_screen_confetti_frame(canvas, score):
+    """
+    Function to create the score screen with confetti.
+    """
     create_background_image(canvas, 'soft')
     for i in range(CONFETTI):
         create_score_text(canvas, score)
-        confetti_color = get_confetti_color()
+        color = get_color()
         # define random size
         size = random.randint(1, 20)
         # define random location on canvas
@@ -431,12 +459,12 @@ def create_end_screen_confetti_frame(canvas, score):
         y_coordinate = random.randint(0, CANVAS_HEIGHT - size)
         function = random.choice(["circle", "rectangle", "line"])
         if function == "circle":
-            create_confetti_circle(canvas, x_coordinate, y_coordinate, size, confetti_color)
+            create_confetti_circle(canvas, x_coordinate, y_coordinate, size, color)
         elif function == "rectangle":
-            create_confetti_square(canvas, x_coordinate, y_coordinate, size, confetti_color)
+            create_confetti_square(canvas, x_coordinate, y_coordinate, size, color)
         elif function == "line":
             length = random.randint(50, 250)
-            create_confetti_line(canvas, x_coordinate, y_coordinate, confetti_color, length, size)
+            create_confetti_line(canvas, x_coordinate, y_coordinate, color, length, size)
         if not RUN_IN_CODE_IN_PLACE:
             canvas.update()
         time.sleep(0.1)
@@ -444,7 +472,7 @@ def create_end_screen_confetti_frame(canvas, score):
 
 def create_confetti_line(canvas, x1, y1, color, length=100, width=1):
     """
-    This function draws a line.
+    Function to draw a line.
     """
     x2 = x1 + width
     y2 = y1 + length
@@ -453,7 +481,7 @@ def create_confetti_line(canvas, x1, y1, color, length=100, width=1):
 
 def create_confetti_square(canvas, x1, y1, size, color):
     """
-    This function draws a square.
+    Function to draw a square.
     """
     x2 = x1 + size
     y2 = y1 + size
@@ -462,7 +490,7 @@ def create_confetti_square(canvas, x1, y1, size, color):
 
 def create_confetti_circle(canvas, x1, y1, size, color):
     """
-    This function draws a circle.
+    Function to draw a circle.
     """
     x2 = x1 + size
     y2 = y1 + size
@@ -470,6 +498,9 @@ def create_confetti_circle(canvas, x1, y1, size, color):
 
 
 def create_score_text(canvas, score):
+    """
+    Function to create the score text.
+    """
     score_dict = {
         'player1': [str(score[0]), 80],
         '-': [' - ', CANVAS_WIDTH / 2 - 35],
@@ -497,6 +528,9 @@ def create_background_image(canvas, pic_type='hard'):
 
 
 def create_square(canvas, items, key):
+    """
+    Function to create a rectangle based on dictionary.
+    """
     square = canvas.create_rectangle(
         items[key][0],
         items[key][1],
@@ -508,10 +542,18 @@ def create_square(canvas, items, key):
 
 
 def get_random_direction():
-    return random.choice([-1, 1])
-
+    """
+    Function to return a random value for change_x/y.
+    """
+    movement = [-1.5,-1,0.5,1,1.5]
+    return random.choice(movement)
 
 def get_start_screen_key(items, x, y):
+    """
+    Function to return the key at start screen.
+    Checks with dictionary to see it the user clicked
+    within boundaries and respective key is returned.
+    """
     for key, value in items.items():
         if key in ROUNDS or key == 'Exit':
             x1 = value[0]
@@ -524,7 +566,7 @@ def get_start_screen_key(items, x, y):
     return None
 
 
-def get_random_color():
+def get_color():
     """
     Function that returns a random color.
     """
@@ -532,17 +574,6 @@ def get_random_color():
         'orange',
         'green',
         'blue',
-        'purple'
-    ]
-    return random.choice(colors)
-
-
-def get_confetti_color():
-    """
-    Function that returns a random color.
-    """
-    colors = [
-        'orange',
         'coral',
         'tomato',
         'red',
