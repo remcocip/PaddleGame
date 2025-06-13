@@ -1,6 +1,6 @@
 # **PADDLE GAME**
 Author: Remco (remco.cip@gmail.com)
-Version date: 11 June 2025
+Version date: 12 June 2025
 
 ## **Background:** 
 * This is my final project for the CS106A course, provided for free by Stanford Code in Place: https://codeinplace.stanford.edu/ 
@@ -8,7 +8,7 @@ Version date: 11 June 2025
 
 ## **INSTALLATION:** 
 * python3 is installed
-* graphics.py library, copied from Stanford and changed
+* graphics.py library, copied from Stanford and changed (included in this repository)
 * pillow package: "python -m pip install pillow"
 
 ### **How do I play?**
