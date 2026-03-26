@@ -363,7 +363,7 @@ def move_paddle_mouse(canvas):
     # get the x position of the paddle
     paddle_x = canvas.get_left_x(paddle_2)
 
-    # determine the movement
+    # determine the movement (relative to paddle center)
     mouse_x = canvas.get_mouse_x()
     if mouse_x < (paddle_x + PADDLE_WIDTH / 2):
         if paddle_x > 0:
@@ -401,7 +401,7 @@ def create_start_screen(canvas, items):
             )
 
     info = canvas.create_text(
-        CANVAS_WIDTH/2,
+        CANVAS_WIDTH / 2,
         CANVAS_HEIGHT - 50,
         "Player 1: arrow keys        Player 2: mouse.",
         color='lime green',
